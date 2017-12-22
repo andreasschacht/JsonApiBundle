@@ -71,6 +71,11 @@ class JsonEventSubscriber implements EventSubscriberInterface
     protected $baseUriResolver;
 
     /**
+     * @var string|null
+     */
+    protected $initialClass = null;
+
+    /**
      * @param MetadataFactoryInterface        $jsonApiMetadataFactory
      * @param MetadataFactoryInterface        $jmsMetadataFactory
      * @param PropertyNamingStrategyInterface $namingStrategy
@@ -109,6 +114,10 @@ class JsonEventSubscriber implements EventSubscriberInterface
         $visitor = $event->getVisitor();
         $object = $event->getObject();
         $context = $event->getContext();
+
+        if ($this->initialClass === null) {
+            $this->initialClass = get_class($object);
+        }
 
         /** @var ClassMetadata $metadata */
         $metadata = $this->jsonApiMetadataFactory->getMetadataForClass(get_class($object));
@@ -158,6 +167,11 @@ class JsonEventSubscriber implements EventSubscriberInterface
                 if ($request = $this->requestStack->getCurrentRequest()) {
                     $include = $request->query->get('include');
                     $include = $this->parseInclude($include);
+                }
+
+                // @Quickfix just include from initial object class
+                if ($this->initialClass !== get_class($object)) {
+                    $include = [];
                 }
 
                 // FIXME: $includePath always is relative to the primary resource, so we can build our way with
