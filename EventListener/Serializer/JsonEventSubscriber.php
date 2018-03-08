@@ -16,6 +16,7 @@ use JMS\Serializer\Context;
 use JMS\Serializer\EventDispatcher\Events;
 use JMS\Serializer\EventDispatcher\EventSubscriberInterface;
 use JMS\Serializer\EventDispatcher\ObjectEvent;
+use JMS\Serializer\Metadata\PropertyMetadata;
 use JMS\Serializer\Naming\PropertyNamingStrategyInterface;
 use Mango\Bundle\JsonApiBundle\Configuration\Metadata\ClassMetadata;
 use Mango\Bundle\JsonApiBundle\Configuration\Relationship;
@@ -145,13 +146,21 @@ class JsonEventSubscriber implements EventSubscriberInterface
             foreach ($metadata->getRelationships() as $relationship) {
                 $relationshipPropertyName = $relationship->getName();
 
-                $relationshipObject = $propertyAccessor->getValue($object, $relationshipPropertyName);
-
                 // JMS Serializer support
                 if (!isset($jmsMetadata->propertyMetadata[$relationshipPropertyName])) {
+                    $relationshipObject = $propertyAccessor->getValue($object, $relationshipPropertyName);
                     continue;
                 }
+
+                /** @var PropertyMetadata $jmsPropertyMetadata */
                 $jmsPropertyMetadata = $jmsMetadata->propertyMetadata[$relationshipPropertyName];
+                if ($jmsPropertyMetadata->getter) {
+                    $relationshipObject = $jmsPropertyMetadata->getValue($object);
+                } else {
+                    $relationshipObject = $propertyAccessor->getValue($object, $relationshipPropertyName);
+                }
+
+
                 $relationshipPayloadKey = $this->namingStrategy->translateName($jmsPropertyMetadata);
 
                 $relationshipData =& $relationships[$relationshipPayloadKey];
